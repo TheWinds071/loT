@@ -49,7 +49,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+#define ADC_BUFFER_SIZE 10
+uint16_t adc_buffer[ADC_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,6 +102,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // 初始化并启动UART3接收SHT31数据
   UART3_Receiver_Init();
+
+  // 启动ADC DMA
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
