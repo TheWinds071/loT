@@ -51,6 +51,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
         Drivers/BSP/Src/SHT31.c
         Drivers/BSP/Src/Transmit.cpp
+        Drivers/BSP/Src/Button.cpp
          ${OLED_SOURCES}
 )
 

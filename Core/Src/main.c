@@ -30,10 +30,13 @@
 #include "OLED.h"
 #include "u8g2.h"
 #include "Transmit.h"
+#include "Button.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+//按键结构体
+Button_HandleTypeDef button1;
 
 /* USER CODE END PTD */
 
@@ -103,16 +106,18 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // 初始化并启动UART3接收SHT31数据
   UART3_Receiver_Init();
-
   // 启动ADC DMA
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
+
+  Button_Init(&button1, BUTTON1_PIN);
+
+  u8g2_t u8g2;
+  u8g2Init(&u8g2);
+  u8g2_SetFont(&u8g2, u8g2_font_10x20_tf);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  u8g2_t u8g2;
-  u8g2Init(&u8g2);
-  u8g2_SetFont(&u8g2, u8g2_font_10x20_tf);
   while (1)
   {
     // 显示字符串
@@ -127,6 +132,12 @@ int main(void)
     // 通过UART1发送测试信息
     ETH_TransmitString("Hello from ETH!\r\n");
 
+    uint8_t event = Button_GetEvent(&button1);
+    if (event == BUTTON_PRESS_EVENT) {
+      // 处理按钮按下事件
+    } else if (event == BUTTON_RELEASE_EVENT) {
+      // 处理按钮释放事件
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
