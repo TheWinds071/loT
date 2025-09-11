@@ -31,6 +31,7 @@
 #include "u8g2.h"
 #include "Transmit.h"
 #include "Button.h"
+#include "Relay.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -110,6 +111,7 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
 
   Button_Init(&button1, BUTTON1_PIN);
+  Relay_Init();
 
   u8g2_t u8g2;
   u8g2Init(&u8g2);
@@ -134,6 +136,7 @@ int main(void)
 
     uint8_t event = Button_GetEvent(&button1);
     if (event == BUTTON_PRESS_EVENT) {
+      Relay_On();
       // 处理按钮按下事件
     } else if (event == BUTTON_RELEASE_EVENT) {
       // 处理按钮释放事件

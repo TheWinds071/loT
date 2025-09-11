@@ -52,6 +52,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Drivers/BSP/Src/SHT31.c
         Drivers/BSP/Src/Transmit.cpp
         Drivers/BSP/Src/Button.cpp
+        Drivers/BSP/Src/Relay.cpp
          ${OLED_SOURCES}
 )
 
