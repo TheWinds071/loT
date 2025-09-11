@@ -21,6 +21,7 @@
 #include "adc.h"
 #include "dma.h"
 #include "i2c.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -54,8 +55,9 @@ Button_HandleTypeDef button1;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-#define ADC_BUFFER_SIZE 10
+#define ADC_BUFFER_SIZE 4
 uint16_t adc_buffer[ADC_BUFFER_SIZE];
+float lightValue = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,39 +106,46 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   // 初始化并启动UART3接收SHT31数据
   UART3_Receiver_Init();
   // 启动ADC DMA
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
 
+  HAL_TIM_Base_Start_IT(&htim4);
+
   Button_Init(&button1, BUTTON1_PIN);
   Relay_Init();
 
   u8g2_t u8g2;
   u8g2Init(&u8g2);
-  u8g2_SetFont(&u8g2, u8g2_font_10x20_tf);
+  u8g2_SetFont(&u8g2,u8g2_font_ncenB08_tr);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    lightValue = (1-adc_buffer[0]/4095.0f)*100;
+    u8g2_ClearBuffer(&u8g2);
     // 显示字符串
-    OLED_ShowString(&u8g2, 0, 10, "Hello World");
+    //OLED_ShowString(&u8g2, 0, 10, "Hello World");
     // 显示整数
-    OLED_ShowInt(&u8g2, 0, 20, 123);
+    //OLED_ShowInt(&u8g2, 0, 20, 123);
     // 显示浮点数（保留2位小数）
-    OLED_ShowFloat(&u8g2, 0, 30, 3.14159, 2);
+    OLED_ShowFloat(&u8g2, 0, 10, humidity, 2);
+    OLED_ShowFloat(&u8g2, 0, 20, temperature, 2);
+    OLED_ShowFloat(&u8g2, 0, 30, lightValue, 2);
     // 更新显示
     u8g2_SendBuffer(&u8g2);
 
     // 通过UART1发送测试信息
-    ETH_TransmitString("Hello from ETH!\r\n");
+    //ETH_TransmitString("?1,55.55\r\n");
 
     uint8_t event = Button_GetEvent(&button1);
     if (event == BUTTON_PRESS_EVENT) {
-      Relay_On();
+      Relay_Toggle();
       // 处理按钮按下事件
     } else if (event == BUTTON_RELEASE_EVENT) {
       // 处理按钮释放事件

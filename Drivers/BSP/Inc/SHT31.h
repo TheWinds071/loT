@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stm32f1xx_hal.h>
 
-#define UART3_RX_BUFFER_SIZE 256
+#define UART3_RX_BUFFER_SIZE 18
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +20,7 @@ extern float temperature;
 void UART3_Receiver_Init(void);
 void UART3_Start_Receive(void);
 void Parse_SHT31_Data(uint8_t *data);
+void UART3_IDLE_Callback(void);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

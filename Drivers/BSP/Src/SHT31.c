@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include "main.h"
 #include "stm32f1xx_hal_uart.h"
 #include "usart.h"
 #include "dma.h"
@@ -18,6 +18,9 @@ volatile uint16_t uart3_rx_index = 0;
 // 用于存储解析后的温湿度数据
 float humidity = 0.0;
 float temperature = 0.0;
+
+// 添加一个标志用于空闲线路检测
+extern UART_HandleTypeDef huart3;
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -34,6 +37,9 @@ void UART3_Receiver_Init(void)
 
     // 启动DMA接收
     UART3_Start_Receive();
+
+    // 启用空闲线路检测中断
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
 }
 
 /**
@@ -97,12 +103,34 @@ void Parse_SHT31_Data(uint8_t *data)
                 *end_ptr = end_char;
 
                 // 打印解析结果（用于调试）
-                printf("Humidity: %.1f%%, Temperature: %.1fC\r\n", humidity, temperature);
+                // printf("Humidity: %.1f%%, Temperature: %.1fC\r\n", humidity, temperature);
 
-                // 通过UART1发送解析结果（用于调试）
+                // 通过UART1发送解析结果（用于调试）- 使用手动格式化避免浮点问题
                 char result_str[100];
-                sprintf(result_str, "Humidity: %.1f%%, Temperature: %.1fC\r\n", humidity, temperature);
-                HAL_UART_Transmit(&huart1, (uint8_t*)result_str, strlen(result_str), HAL_MAX_DELAY);
+                int hum_int = (int)humidity;
+                int hum_dec = (int)((humidity - hum_int) * 10);
+                int temp_int = (int)temperature;
+                int temp_dec = (int)((temperature - temp_int) * 10);
+
+                // 获取光照值
+                extern float lightValue;
+                int light_int = (int)lightValue;
+                int light_dec = (int)((lightValue - light_int) * 10);
+
+                // 获取继电器状态
+                extern uint8_t Relay_GetState(void);
+                uint8_t relay_state = Relay_GetState();
+
+                // 手动构建字符串避免使用浮点格式化，将继电器状态和光照值添加到数据中
+                int len = sprintf(result_str, "?2,%s,%d.%d,%d.%d,%d.%d\r\n",
+                                 relay_state ? "on" : "off",
+                                 temp_int, temp_dec,
+                                 hum_int, hum_dec,
+                                 light_int, light_dec);
+
+                if (len > 0) {
+                    HAL_UART_Transmit(&huart1, (uint8_t*)result_str, len, HAL_MAX_DELAY);
+                }
             }
         }
     }
@@ -112,112 +140,49 @@ void Parse_SHT31_Data(uint8_t *data)
 extern DMA_HandleTypeDef hdma_usart3_rx;
 
 /**
-  * @brief  UART3接收完成回调函数
-  * @param  huart UART句柄
+  * @brief  UART3 IDLE中断处理函数
   * @retval None
   */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void UART3_IDLE_Callback(void)
 {
-    if (huart->Instance == USART3) {
+    if (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_IDLE) != RESET) {
+        // 清除IDLE标志
+        __HAL_UART_CLEAR_IDLEFLAG(&huart3);
+
+        // 停止DMA接收
+        HAL_UART_DMAStop(&huart3);
+
+        // 计算接收到的数据长度
+        uint16_t rx_data_length = UART3_RX_BUFFER_SIZE;
+
         // 处理接收到的数据
-        static uint16_t last_pos = 0;
-        uint16_t current_pos = UART3_RX_BUFFER_SIZE - hdma_usart3_rx.Instance->CNDTR;
-        uint16_t i;
-
-        // 如果当前位置在缓冲区末尾，重新开始
-        if (current_pos >= UART3_RX_BUFFER_SIZE) {
-            current_pos = 0;
+        // 将数据从接收缓冲区复制到行缓冲区
+        for (uint16_t i = 0; i < rx_data_length && i < UART3_RX_BUFFER_SIZE - 1; i++) {
+            uart3_rx_line[i] = uart3_rx_buffer[i];
         }
 
-        // 如果有新数据
-        if (current_pos != last_pos) {
-            // 检查是否有回车换行符
-            if (last_pos < current_pos) {
-                // 数据在缓冲区中是连续的
-                for (i = last_pos; i < current_pos; i++) {
-                    if (uart3_rx_buffer[i] == '\n' || uart3_rx_buffer[i] == '\r') {
-                        // 打印整行数据
-                        uart3_rx_line[uart3_rx_index] = '\0';
-                        printf("UART3 Received: %s\r\n", uart3_rx_line);
+        // 添加字符串结束符
+        uart3_rx_line[rx_data_length < UART3_RX_BUFFER_SIZE ? rx_data_length : UART3_RX_BUFFER_SIZE - 1] = '\0';
 
-                        // 解析SHT31数据
-                        Parse_SHT31_Data(uart3_rx_line);
+        // 打印整行数据
+        printf("UART3 Received: %s\r\n", uart3_rx_line);
 
-                        // 通过UART1发送出去（用于调试）
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"UART3 Received: ",
-                                          strlen("UART3 Received: "), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, uart3_rx_line, strlen((char*)uart3_rx_line), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+        // 解析SHT31数据
+        Parse_SHT31_Data(uart3_rx_line);
 
-                        // 重置索引
-                        uart3_rx_index = 0;
-                        memset(uart3_rx_line, 0, sizeof(uart3_rx_line));
-                    } else {
-                        uart3_rx_line[uart3_rx_index++] = uart3_rx_buffer[i];
-                        if (uart3_rx_index >= UART3_RX_BUFFER_SIZE - 1) {
-                            uart3_rx_index = 0;
-                        }
-                    }
-                }
-            } else {
-                // 数据环绕缓冲区末尾
-                for (i = last_pos; i < UART3_RX_BUFFER_SIZE; i++) {
-                    if (uart3_rx_buffer[i] == '\n' || uart3_rx_buffer[i] == '\r') {
-                        // 打印整行数据
-                        uart3_rx_line[uart3_rx_index] = '\0';
-                        printf("UART3 Received: %s\r\n", uart3_rx_line);
+        // 通过UART1发送出去（用于调试）
+        // HAL_UART_Transmit(&huart1, (uint8_t*)"UART3 Received: ",
+        //                   strlen("UART3 Received: "), HAL_MAX_DELAY);
+        // HAL_UART_Transmit(&huart1, uart3_rx_line, strlen((char*)uart3_rx_line), HAL_MAX_DELAY);
+        // HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
 
-                        // 解析SHT31数据
-                        Parse_SHT31_Data(uart3_rx_line);
+        // 重置索引和缓冲区
+        uart3_rx_index = 0;
+        memset(uart3_rx_line, 0, sizeof(uart3_rx_line));
+        memset(uart3_rx_buffer, 0, sizeof(uart3_rx_buffer));
 
-                        // 通过UART1发送出去（用于调试）
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"UART3 Received: ",
-                                          strlen("UART3 Received: "), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, uart3_rx_line, strlen((char*)uart3_rx_line), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
-
-                        // 重置索引
-                        uart3_rx_index = 0;
-                        memset(uart3_rx_line, 0, sizeof(uart3_rx_line));
-                    } else {
-                        uart3_rx_line[uart3_rx_index++] = uart3_rx_buffer[i];
-                        if (uart3_rx_index >= UART3_RX_BUFFER_SIZE - 1) {
-                            uart3_rx_index = 0;
-                        }
-                    }
-                }
-
-                for (i = 0; i < current_pos; i++) {
-                    if (uart3_rx_buffer[i] == '\n' || uart3_rx_buffer[i] == '\r') {
-                        // 打印整行数据
-                        uart3_rx_line[uart3_rx_index] = '\0';
-                        printf("UART3 Received: %s\r\n", uart3_rx_line);
-
-                        // 解析SHT31数据
-                        Parse_SHT31_Data(uart3_rx_line);
-
-                        // 通过UART1发送出去（用于调试）
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"UART3 Received: ",
-                                          strlen("UART3 Received: "), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, uart3_rx_line, strlen((char*)uart3_rx_line), HAL_MAX_DELAY);
-                        HAL_UART_Transmit(&huart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
-
-                        // 重置索引
-                        uart3_rx_index = 0;
-                        memset(uart3_rx_line, 0, sizeof(uart3_rx_line));
-                    } else {
-                        uart3_rx_line[uart3_rx_index++] = uart3_rx_buffer[i];
-                        if (uart3_rx_index >= UART3_RX_BUFFER_SIZE - 1) {
-                            uart3_rx_index = 0;
-                        }
-                    }
-                }
-            }
-            last_pos = current_pos;
-        }
-
-        // 重新启动接收
-        HAL_UART_Receive_DMA(&huart3, uart3_rx_buffer, UART3_RX_BUFFER_SIZE);
+        // 重新启动DMA接收
+        UART3_Start_Receive();
     }
 }
 

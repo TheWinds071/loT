@@ -125,7 +125,6 @@ void u8g2Init(u8g2_t *u8g2)
  */
 void OLED_ShowString(u8g2_t *u8g2, uint8_t x, uint8_t y, char *str)
 {
-    u8g2_SetFont(u8g2, u8g2_font_ncenB08_tr);
     u8g2_DrawStr(u8g2, x, y, str);
 }
 
@@ -139,9 +138,47 @@ void OLED_ShowString(u8g2_t *u8g2, uint8_t x, uint8_t y, char *str)
  */
 void OLED_ShowInt(u8g2_t *u8g2, uint8_t x, uint8_t y, int num)
 {
-    char str[32];
-    sprintf(str, "%d", num);
-    OLED_ShowString(u8g2, x, y, str);
+    char temp_buff[12];
+    char *s = temp_buff;
+    uint8_t is_negative = 0;
+
+    // 处理0的特殊情况
+    if (num == 0) {
+        *s++ = '0';
+        *s = '\0';
+        u8g2_DrawStr(u8g2, x, y, temp_buff);
+        return;
+    }
+
+    // 处理负数
+    if (num < 0) {
+        is_negative = 1;
+        num = -num;
+    }
+
+    // 将数字转换为字符串（逆序）
+    char temp_str[12];
+    uint8_t len = 0;
+
+    while (num > 0) {
+        temp_str[len++] = (num % 10) + '0';
+        num /= 10;
+    }
+
+    // 添加负号
+    if (is_negative) {
+        *s++ = '-';
+    }
+
+    // 反转数字字符串并复制到结果缓冲区
+    for (int i = len - 1; i >= 0; i--) {
+        *s++ = temp_str[i];
+    }
+
+    // 字符串结束
+    *s = '\0';
+
+    u8g2_DrawStr(u8g2, x, y, temp_buff);
 }
 
 /**
@@ -155,25 +192,69 @@ void OLED_ShowInt(u8g2_t *u8g2, uint8_t x, uint8_t y, int num)
  */
 void OLED_ShowFloat(u8g2_t *u8g2, uint8_t x, uint8_t y, float num, uint8_t precision)
 {
-    char str[32];
-    char format[10];
+    char temp_buff[20];
+    char *s = temp_buff;
 
-    // 根据精度构建格式化字符串
-    if (precision == 0) {
-        sprintf(str, "%.0f", num);
-    } else if (precision == 1) {
-        sprintf(str, "%.1f", num);
-    } else if (precision == 2) {
-        sprintf(str, "%.2f", num);
-    } else if (precision == 3) {
-        sprintf(str, "%.3f", num);
-    } else {
-        // 默认使用2位小数
-        sprintf(str, "%.2f", num);
+    // 限制精度在合理范围内
+    if (precision > 5) precision = 5;
+
+    // 处理负数
+    if (num < 0) {
+        *s++ = '-';
+        num = -num;
     }
 
-    OLED_ShowString(u8g2, x, y, str);
+    // 获取整数部分
+    int integer_part = (int)num;
+    // 获取小数部分
+    float decimal_part = num - integer_part;
+
+    // 处理整数部分为0的情况
+    if (integer_part == 0 && temp_buff[0] != '-') {
+        *s++ = '0';
+    } else {
+        // 转换整数部分
+        char int_buff[10];
+        int int_len = 0;
+        int temp = integer_part;
+
+        // 特殊处理整数部分为0的情况
+        if (temp == 0) {
+            int_buff[int_len++] = '0';
+        } else {
+            // 将整数转换为字符串（逆序）
+            while (temp > 0) {
+                int_buff[int_len++] = (temp % 10) + '0';
+                temp /= 10;
+            }
+        }
+
+        // 正序复制到结果缓冲区
+        for (int i = int_len - 1; i >= 0; i--) {
+            *s++ = int_buff[i];
+        }
+    }
+
+    // 如果精度为0，则不显示小数部分
+    if (precision > 0) {
+        // 添加小数点
+        *s++ = '.';
+        // 处理小数部分
+        for (int i = 0; i < precision; i++) {
+            decimal_part *= 10;
+            int digit = (int)decimal_part;
+            *s++ = digit + '0';
+            decimal_part -= digit;
+        }
+    }
+
+    // 字符串结束
+    *s = '\0';
+
+    u8g2_DrawStr(u8g2, x, y, temp_buff);
 }
+
+
 
 
 

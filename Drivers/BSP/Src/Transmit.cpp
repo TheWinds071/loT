@@ -4,6 +4,8 @@
 
 #include "Transmit.h"
 
+#include "SHT31.h"
+
 /**
  * @brief 通过UART1发送字符串（以太网通信）
  * @param str 要发送的字符串
@@ -33,3 +35,5 @@ void ETH_TransmitInteger(int value)
     sprintf(buffer, "%d", value);
     HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), HAL_MAX_DELAY);
 }
+
+

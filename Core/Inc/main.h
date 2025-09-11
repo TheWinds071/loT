@@ -61,7 +61,7 @@ void Error_Handler(void);
 #define Relay_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+extern float lightValue;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -17,7 +17,7 @@ extern "C" {
 void ETH_TransmitString(char *str);
 void ETH_TransmitData(uint8_t *data, uint16_t size);
 void ETH_TransmitInteger(int value);
-
+void ETH_DataTransmit();
 #ifdef __cplusplus
 }
 #endif
