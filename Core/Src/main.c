@@ -29,6 +29,7 @@
 #include "SHT31.h"
 #include "OLED.h"
 #include "u8g2.h"
+#include "Transmit.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -122,6 +123,9 @@ int main(void)
     OLED_ShowFloat(&u8g2, 0, 30, 3.14159, 2);
     // 更新显示
     u8g2_SendBuffer(&u8g2);
+
+    // 通过UART1发送测试信息
+    ETH_TransmitString("Hello from ETH!\r\n");
 
     /* USER CODE END WHILE */
 

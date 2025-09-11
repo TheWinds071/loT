@@ -50,6 +50,7 @@ file(GLOB OLED_SOURCES "Drivers/BSP/OLED/*.c")
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
         Drivers/BSP/Src/SHT31.c
+        Drivers/BSP/Src/Transmit.cpp
          ${OLED_SOURCES}
 )
 
