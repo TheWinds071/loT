@@ -108,6 +108,8 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  // 初始化并启动UART1接收控制指令
+  UART1_Receiver_Init();
   // 初始化并启动UART3接收SHT31数据
   UART3_Receiver_Init();
   // 启动ADC DMA
@@ -137,6 +139,7 @@ int main(void)
     OLED_ShowFloat(&u8g2, 0, 10, humidity, 2);
     OLED_ShowFloat(&u8g2, 0, 20, temperature, 2);
     OLED_ShowFloat(&u8g2, 0, 30, lightValue, 2);
+    OLED_ShowString(&u8g2, 0, 40, "Device:2");
     // 更新显示
     u8g2_SendBuffer(&u8g2);
 

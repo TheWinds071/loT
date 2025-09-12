@@ -9,8 +9,15 @@
 #include "stm32f1xx_hal_uart.h"
 #include "usart.h"
 #include "dma.h"
+#include "Relay.h"
 
 /* USER CODE BEGIN 0 */
+#define UART1_RX_BUFFER_SIZE 64
+
+uint8_t uart1_rx_buffer[UART1_RX_BUFFER_SIZE];
+uint8_t uart1_rx_line[UART1_RX_BUFFER_SIZE];
+volatile uint16_t uart1_rx_index = 0;
+
 uint8_t uart3_rx_buffer[UART3_RX_BUFFER_SIZE];
 uint8_t uart3_rx_line[UART3_RX_BUFFER_SIZE];
 volatile uint16_t uart3_rx_index = 0;
@@ -20,10 +27,82 @@ float humidity = 0.0;
 float temperature = 0.0;
 
 // 添加一个标志用于空闲线路检测
+extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart3;
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
+/**
+  * @brief  初始化UART1接收器
+  * @retval None
+  */
+void UART1_Receiver_Init(void)
+{
+    // 初始化接收缓冲区
+    memset(uart1_rx_buffer, 0, sizeof(uart1_rx_buffer));
+    memset(uart1_rx_line, 0, sizeof(uart1_rx_line));
+    uart1_rx_index = 0;
+
+    // 启动DMA接收
+    UART1_Start_Receive();
+
+    // 启用空闲线路检测中断
+    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+}
+
+/**
+  * @brief  启动UART1接收
+  * @retval None
+  */
+void UART1_Start_Receive(void)
+{
+    // 启动DMA接收
+    HAL_UART_Receive_DMA(&huart1, uart1_rx_buffer, UART1_RX_BUFFER_SIZE);
+}
+
+/**
+  * @brief  解析UART1接收到的继电器控制指令
+  * @param  data: 接收到的数据字符串
+  * @retval None
+  */
+void Parse_Relay_Control_Data(uint8_t *data)
+{
+    // 数据格式为: [('192.168.137.117', 60386)] #2:on\n 或 [('192.168.137.117', 60386)] #2:off\n
+    char *start_ptr = (char*)data;
+
+    // 查找命令起始位置
+    char *cmd_ptr = strstr(start_ptr, "#2:");
+    if (cmd_ptr != NULL) {
+        // 跳过"#2:"字符
+        cmd_ptr += 3;
+
+        // 查找结束符 \n
+        char *end_ptr = strstr(cmd_ptr, "\n");
+        if (end_ptr != NULL) {
+            // 临时替换结束符，便于字符串比较
+            *end_ptr = '\0';
+
+            // 根据指令控制继电器
+            if (strcmp(cmd_ptr, "on") == 0) {
+                Relay_SetState(RELAY_ON);
+            } else if (strcmp(cmd_ptr, "off") == 0) {
+                Relay_SetState(RELAY_OFF);
+            }
+
+            // 恢复结束符
+            *end_ptr = '\n';
+        } else {
+            // 如果没有找到\n，尝试查找\0（字符串结尾）
+            // 直接比较命令
+            if (strcmp(cmd_ptr, "on") == 0) {
+                Relay_SetState(RELAY_ON);
+            } else if (strcmp(cmd_ptr, "off") == 0) {
+                Relay_SetState(RELAY_OFF);
+            }
+        }
+    }
+}
+
 /**
   * @brief  初始化UART3接收器
   * @retval None
@@ -137,7 +216,49 @@ void Parse_SHT31_Data(uint8_t *data)
 }
 
 // 添加DMA句柄的外部声明
+extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
+
+/**
+  * @brief  UART1 IDLE中断处理函数
+  * @retval None
+  */
+void UART1_IDLE_Callback(void)
+{
+    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE) != RESET) {
+        // 清除IDLE标志
+        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
+
+        // 停止DMA接收
+        HAL_UART_DMAStop(&huart1);
+
+        // 计算接收到的数据长度
+        uint16_t rx_data_length = UART1_RX_BUFFER_SIZE;
+
+        // 处理接收到的数据
+        // 将数据从接收缓冲区复制到行缓冲区
+        for (uint16_t i = 0; i < rx_data_length && i < UART1_RX_BUFFER_SIZE - 1; i++) {
+            uart1_rx_line[i] = uart1_rx_buffer[i];
+        }
+
+        // 添加字符串结束符
+        uart1_rx_line[rx_data_length < UART1_RX_BUFFER_SIZE ? rx_data_length : UART1_RX_BUFFER_SIZE - 1] = '\0';
+
+        // 打印整行数据
+        printf("UART1 Received: %s\r\n", uart1_rx_line);
+
+        // 解析继电器控制指令
+        Parse_Relay_Control_Data(uart1_rx_line);
+
+        // 重置索引和缓冲区
+        uart1_rx_index = 0;
+        memset(uart1_rx_line, 0, sizeof(uart1_rx_line));
+        memset(uart1_rx_buffer, 0, sizeof(uart1_rx_buffer));
+
+        // 重新启动DMA接收
+        UART1_Start_Receive();
+    }
+}
 
 /**
   * @brief  UART3 IDLE中断处理函数
@@ -187,13 +308,17 @@ void UART3_IDLE_Callback(void)
 }
 
 /**
-  * @brief  UART3接收错误回调函数
+  * @brief  UART1接收错误回调函数
   * @param  huart UART句柄
   * @retval None
   */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART3) {
+    if (huart->Instance == USART1) {
+        // 重启接收
+        HAL_UART_Receive_DMA(&huart1, uart1_rx_buffer, UART1_RX_BUFFER_SIZE);
+    }
+    else if (huart->Instance == USART3) {
         // 重启接收
         HAL_UART_Receive_DMA(&huart3, uart3_rx_buffer, UART3_RX_BUFFER_SIZE);
     }
