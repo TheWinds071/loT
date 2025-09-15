@@ -62,6 +62,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 extern float lightValue;
+extern float current;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

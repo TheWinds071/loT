@@ -200,12 +200,45 @@ void Parse_SHT31_Data(uint8_t *data)
                 extern uint8_t Relay_GetState(void);
                 uint8_t relay_state = Relay_GetState();
 
+                //获取电压
+                float voltage = 0;
+                if (relay_state) {
+                    voltage = 12.5;
+                }else {
+                    voltage = 0;
+                }
+                int voltage_int = (int)voltage;
+                int voltage_dec = (int)((voltage - voltage_int) * 10);
+
+                //获取电流值
+                // extern float current;
+                // int current_int = (int)current;
+                // int current_dec = (int)((current - current_int) * 10);
+                //获取ADC
+                extern uint16_t adc_buffer[4];
+                if (relay_state) {
+                    current = 40 * adc_buffer[2] * 0.0008;
+                }else {
+                    current = 0;
+                }
+                int current_int = (int)current;
+                int current_dec = (int)((current - current_int) * 10);
+
                 // 手动构建字符串避免使用浮点格式化，将继电器状态和光照值添加到数据中
-                int len = sprintf(result_str, "?2,%s,%d.%d,%d.%d,%d.%d\r\n",
+                // int len = sprintf(result_str, "?1,%s,%d.%d,%d.%d,%d.%d,%d.%d,%d.%d\r\n",
+                //                  relay_state ? "on" : "off",
+                //                  temp_int, temp_dec,
+                //                  hum_int, hum_dec,
+                //                  light_int, light_dec,
+                //                  voltage_int, voltage_dec,
+                //                  current_int, current_dec);
+                int len = sprintf(result_str, "?2,%s,%d.%d,%d.%d,%d.%d,%d.%d,%d.%d\r\n",
                                  relay_state ? "on" : "off",
                                  temp_int, temp_dec,
                                  hum_int, hum_dec,
-                                 light_int, light_dec);
+                                 light_int, light_dec,
+                                 voltage_int, voltage_dec,
+                                 current_int, current_dec);
 
                 if (len > 0) {
                     HAL_UART_Transmit(&huart1, (uint8_t*)result_str, len, HAL_MAX_DELAY);

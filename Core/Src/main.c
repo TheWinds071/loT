@@ -21,7 +21,6 @@
 #include "adc.h"
 #include "dma.h"
 #include "i2c.h"
-#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -58,6 +57,7 @@ Button_HandleTypeDef button1;
 #define ADC_BUFFER_SIZE 4
 uint16_t adc_buffer[ADC_BUFFER_SIZE];
 float lightValue = 0;
+float current = 0;  //电流
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,7 +106,6 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
-  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   // 初始化并启动UART1接收控制指令
   UART1_Receiver_Init();
@@ -114,8 +113,6 @@ int main(void)
   UART3_Receiver_Init();
   // 启动ADC DMA
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, ADC_BUFFER_SIZE);
-
-  HAL_TIM_Base_Start_IT(&htim4);
 
   Button_Init(&button1, BUTTON1_PIN);
   Relay_Init();
@@ -130,16 +127,30 @@ int main(void)
   while (1)
   {
     lightValue = (1-adc_buffer[0]/4095.0f)*100;
+
+    // 计算电流值 (ADC值28对应0mA，887对应50mA)
+    if (adc_buffer[3] <= 28) {
+      current = 0;
+    } else {
+      current = (adc_buffer[3] - 28) * 50.0f / (887 - 28);
+    }
+
     u8g2_ClearBuffer(&u8g2);
     // 显示字符串
     //OLED_ShowString(&u8g2, 0, 10, "Hello World");
     // 显示整数
     //OLED_ShowInt(&u8g2, 0, 20, 123);
     // 显示浮点数（保留2位小数）
-    OLED_ShowFloat(&u8g2, 0, 10, humidity, 2);
-    OLED_ShowFloat(&u8g2, 0, 20, temperature, 2);
-    OLED_ShowFloat(&u8g2, 0, 30, lightValue, 2);
-    OLED_ShowString(&u8g2, 0, 40, "Device:2");
+    OLED_ShowString(&u8g2, 0, 10, "Humidity:");
+    OLED_ShowFloat(&u8g2, 80, 10, humidity, 2);
+    OLED_ShowString(&u8g2, 0, 20, "Temperature:");
+    OLED_ShowFloat(&u8g2, 80, 20, temperature, 2);
+    OLED_ShowString(&u8g2, 0, 30, "LightValue:");
+    OLED_ShowFloat(&u8g2, 80, 30, lightValue, 2);
+    OLED_ShowString(&u8g2, 0, 40, "Current:");
+    OLED_ShowFloat(&u8g2, 80, 40, current, 2);
+    OLED_ShowString(&u8g2, 110, 40, "mA");
+    OLED_ShowString(&u8g2, 0, 50, "Device:2");
     // 更新显示
     u8g2_SendBuffer(&u8g2);
 
