@@ -150,7 +150,7 @@ int main(void)
     OLED_ShowString(&u8g2, 0, 40, "Current:");
     OLED_ShowFloat(&u8g2, 80, 40, current, 2);
     OLED_ShowString(&u8g2, 110, 40, "mA");
-    OLED_ShowString(&u8g2, 0, 50, "Device:2");
+    OLED_ShowString(&u8g2, 0, 50, "Device:1");
     // 更新显示
     u8g2_SendBuffer(&u8g2);
 
