@@ -43,7 +43,7 @@ void UART1_Receiver_Init(void)
     memset(uart1_rx_line, 0, sizeof(uart1_rx_line));
     uart1_rx_index = 0;
 
-    // 启动DMA接收
+    // 启动DMA
     UART1_Start_Receive();
 
     // 启用空闲线路检测中断
