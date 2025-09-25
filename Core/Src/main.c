@@ -107,7 +107,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  // 初始化并启动UART1接收控制指令
+  // 初始化并启动UART1接收控制
   UART1_Receiver_Init();
   // 初始化并启动UART3接收SHT31数据
   UART3_Receiver_Init();
