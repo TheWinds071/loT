@@ -155,7 +155,7 @@ int main(void)
     u8g2_SendBuffer(&u8g2);
 
     // 通过UART1发送测试信息
-    //ETH_TransmitString("?1,55.55\r\n");
+    ETH_TransmitString("?1,55.55\r\n");
 
     uint8_t event = Button_GetEvent(&button1);
     if (event == BUTTON_PRESS_EVENT) {
