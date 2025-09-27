@@ -151,7 +151,7 @@ int main(void)
     OLED_ShowFloat(&u8g2, 80, 40, current, 2);
     OLED_ShowString(&u8g2, 110, 40, "mA");
     OLED_ShowString(&u8g2, 0, 50, "Device:1");
-    // 更新显示
+    // 更新
     u8g2_SendBuffer(&u8g2);
 
     // 通过UART1发送测试信息
