@@ -128,7 +128,7 @@ int main(void)
   {
     lightValue = (1-adc_buffer[0]/4095.0f)*100;
 
-    // 计算电流值 (ADC值28对应0mA，887对应50mA)
+    // 计算电流 (ADC值28对应0mA，887对应50mA)
     if (adc_buffer[3] <= 28) {
       current = 0;
     } else {
