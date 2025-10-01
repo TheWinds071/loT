@@ -41,6 +41,7 @@ void Relay_Toggle()
 {
     if (relay_state == RELAY_ON) {
         Relay_Off();
+        //关闭
     } else {
         Relay_On();
     }
