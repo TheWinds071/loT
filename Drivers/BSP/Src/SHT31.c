@@ -155,7 +155,7 @@ void Parse_SHT31_Data(uint8_t *data)
             // 保存原始字符
             char temp_char = *temperature_ptr;
 
-            // 在温度值前插入字符串结束符，以便解析湿度
+            // 在温度值前插入字符串结束符
             *temperature_ptr = '\0';
 
             // 解析湿度值
