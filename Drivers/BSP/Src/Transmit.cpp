@@ -7,7 +7,7 @@
 #include "SHT31.h"
 
 /**
- * @brief 通过UART1发送字符串（以太网通信）
+ * @brief 通过UART1发送字符串
  * @param str 要发送的字符串
  */
 void ETH_TransmitString(char *str)
