@@ -6,7 +6,7 @@
 #include <cstdint>
 
 // 消抖时间，单位ms
-#define BUTTON_DEBOUNCE_TIME 10
+#define BUTTON_DEBOUNCE_TIME 5
 
 /**
  * @brief 初始化按钮
