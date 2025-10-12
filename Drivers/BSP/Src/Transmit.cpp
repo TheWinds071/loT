@@ -26,7 +26,7 @@ void ETH_TransmitData(uint8_t *data, uint16_t size)
 }
 
 /**
- * @brief 通过UART1发送整数（以太网通信）
+ * @brief 通过UART1发送整数
  * @param value 要发送的整数值
  */
 void ETH_TransmitInteger(int value)
