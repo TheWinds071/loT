@@ -12,7 +12,7 @@
 #include "Relay.h"
 
 /* USER CODE BEGIN 0 */
-#define UART1_RX_BUFFER_SIZE 64
+#define UART1_RX_BUFFER_SIZE 32
 
 uint8_t uart1_rx_buffer[UART1_RX_BUFFER_SIZE];
 uint8_t uart1_rx_line[UART1_RX_BUFFER_SIZE];
